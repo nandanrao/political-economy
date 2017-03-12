@@ -58,13 +58,16 @@ def get_super_pacs(year):
 ############ DFs
 
 # make folder org for committees
-committees = read_table('../data/cmtes16.txt', 'https://www.opensecrets.org/resources/datadictionary/Data%20Dictionary%20for%20Cmtes.htm')
+def read_and_label(year):
+    year = str(year)
+    committees = read_table('../data/'+year+'/cmtes.txt', 'https://www.opensecrets.org/resources/datadictionary/Data%20Dictionary%20for%20Cmtes.htm')
+    super_pacs = get_super_pacs(year)
+    expenditures = pd.read_csv('../data/'+year+'/independent-expenditure.csv')
+    return label_expenditures(expenditures, super_pacs, committees)
 
-# get super pacs
-super_pacs = get_super_pacs(2016)
 
-# get indepdnent expenditures
-independent_expeditures = pd.read_csv('../data/FEC/IndependentExpenditures.csv')
+years = [2010, 2012, 2014, 2016]
 
-# label and print
-spends = pd.merge(pc, independent_expeditures, left_on='CmteID', right_on='spe_id')
+for y in years:
+    df = read_and_label(y)
+    df.to_csv('../labelled/labelled-expenditures-'+str(y)+'.csv', index=False)
