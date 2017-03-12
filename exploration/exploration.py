@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import seaborn as sns
+from tools import mathify, get_header, read_table
 
 def show_one(self):
     fig = self.get_figure()
@@ -12,19 +13,6 @@ def show_one(self):
 matplotlib.artist.Artist.show_one = show_one
 
 #######################################################
-import requests
-from bs4 import BeautifulSoup
-
-def get_header(url):
-    soup = BeautifulSoup(requests.get(url).text, 'html.parser')
-    return [t.td.text.strip() for t in soup.find_all('table')[0].find_all('tr')[1:]]
-
-def read_table(path, url = None, **kwargs):
-    if url:
-        headers = get_header(url)
-    names = headers if url else None
-    return pd.read_csv(path, sep = ",", quotechar="|", header = None, names = names, **kwargs)
-
 
 
 pac_to_pac = read_table('../data/pac_other16.txt', 'https://www.opensecrets.org/resources/datadictionary/Data%20Dictionary%20PAC%20to%20PAC%20Data.htm')
@@ -76,44 +64,18 @@ pac_contributions[['Amount', 'PACShort']].groupby('PACShort').sum().sort_values(
 
 ############
 
-html = requests.get('https://www.opensecrets.org/outsidespending/summ.php?chrt=V&type=S').text
 
-super_pacs = pd.read_html(html, flavor='bs4')[1]
-
-super_pac_names = super_pacs.Group.unique()
-
-committee_individuals[committee_individuals.PACShort.isin(super_pac_names)].PACShort.unique().size
+# check ultorg!!
+# remove pac or political action comitt...
+# or 2016...
+# basically anything on the very end...
 
 
-##########/?????
-from re import sub
-from decimal import Decimal
 
-def mathify(s):
-    return Decimal(sub(r'[^\d.]', '', s))
-
-super_pacs_that_matter = super_pacs[super_pacs['Total Raised'].map(mathify) > 10]
-
-super_pacs[super_pacs['IndependentExpenditures'].map(mathify) > 10]
+# independent_expeditures[independent_expeditures.spe_nam.str.contains('^league', flags = re.IGNORECASE)].groupby('spe_nam').size()
 
 
-################
-from sklearn.feature_extraction import text
-from sklearn.cluster import KMeans, DBSCAN
+# check for right to rise... multiple!
+# committees[[c if c is True else False for c in committees.PACShort.str.contains('^the', flags=re.IGNORECASE)]]
 
-
-independent_expeditures = pd.read_csv('../data/FEC/IndependentExpenditures.csv')
-
-def tokenize(l):
-    lower = lambda x: map(lambda y: y.lower(), x)
-    tokenizer = text.CountVectorizer().build_tokenizer()
-    costs = map(tokenizer, l)
-    return map(lower, costs)
-
-costs = tokenize(independent_expeditures.pur.unique())
-c = map(lambda x: model.transform_paragraph(x, ignore_missing = True), costs)
-# c = filter(lambda x: 'nan' != x[0], c)
-
-distances = pairwise.pairwise_distances(c[320:330], metric = 'cosine')
-kmeans = KMeans(n_clusters=10, random_state=0).fit(distances)
-df = pd.DataFrame({'purpose': independent_expeditures.pur.unique(), 'label' : kmeans.labels_})
+# committees_who_matter = [c for c in committees.CmteID.sort() if c in committee_individuals.CmteID.unique()]
