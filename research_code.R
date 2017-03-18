@@ -287,12 +287,12 @@ ie12$year <- 2012
 ie14$year <- 2014
 
 ie <- rbind(ie10,ie12,ie14)
+ie$can_id <- toupper(ie$can_id)
 
 dat <- dat[!(dat$gevotes==5 & dat$id=="H4RI01034"),]
 dat <- dat[!(dat$gevotes==5 & dat$id=="H0RI01073"),]
 
 dat2 <- dat %>%
-
     group_by(id,year,abbr,fips,red,totrec,totdis,candcont,indcont,dist,otherpolcom,partycont,state,open,rep,indp) %>%
     summarise(
         namer = first(namer),
@@ -305,7 +305,7 @@ dat2 <- dat %>%
 dat3 <- dat2 %>%
     group_by(id,year) %>%
     filter(n()>1)
-
+o
 
 sp <- subset(ie, super_pac==1)
 
@@ -316,4 +316,11 @@ results %>%
     group_by(id, year) %>%
     dplyr::summarise(num = n_distinct(namer)) %>%
     filter(num > 1)
-    )
+
+ie %>%
+    mutate(exp = parse_number(exp_amo)) %>%
+    arrange(desc(rec_dat)) %>%
+    group_by(can_id, year, sup_opp, tra_id) %>%
+    dplyr::summarise(exp = first(exp)) %>%
+    group_by(can_id, year, sup_opp) %>%
+    dplyr::summarise(total_expenditures = sum(exp))
