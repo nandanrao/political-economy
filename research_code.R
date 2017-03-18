@@ -154,7 +154,7 @@ results$geperr <- gsub("%","",results$geperr)
 results <- subset(results, gevotes!="#")
 
 results$party <- gsub("\\s+","",results$party)
-results$party <-
+results$party <- gsub("/.*","",results$party)
 results$party[results$party=="REP"] <- "R"
 results$party[results$party=="R*"] <- "R"
 results$party[results$party=="GOP"] <- "R"
@@ -242,9 +242,13 @@ dat <- dat[!(dat$abbr %in% lista),]
 dat$state <- gsub("\\s+","",dat$state)
 
 dat$namer <- gsub("\\s{2}","\\s",dat$namer)
+
+dat$gewinr<-NULL
+dat$party<-NULL
+
 # dat$namer <- gsub("^(\\S+\\s\\S+)\\s.*$","\\1",dat$namer)
 
-spend <- aggregate(dat$otherpolcom, by=list(dat$abbr,dat$dist,dat$year), FUN=sum, na.rm=TRUE)
+#spend <- aggregate(dat$otherpolcom, by=list(dat$abbr,dat$dist,dat$year), FUN=sum, na.rm=TRUE)
 
 
 ####################################################################
@@ -276,12 +280,12 @@ dat <- merge(dat,ideol, by=c("abbr","fips","red"))
 
 
 
-
 ####################################################################
 ####################################################################
 ##################       Data & Super Pac      #####################
 ####################################################################
 ####################################################################
+
 
 ie10 <- read.csv("labelled-expenditures-2010.csv")
 ie12 <- read.csv("labelled-expenditures-2012.csv")
@@ -297,8 +301,7 @@ ie14$year <- 2014
 
 ie <- rbind(ie10,ie12,ie14)
 
-dat <- dat[!(dat$gevotes==5 & dat$id=="H4RI01034"),]
-dat <- dat[!(dat$gevotes==5 & dat$id=="H0RI01073"),]
+
 
 dat2 <- dat %>%
 
@@ -315,7 +318,7 @@ dat3 <- dat2 %>%
     group_by(id,year) %>%
     filter(n()>1)
 
-
+## Merge Ideol after this step ##
 sp <- subset(ie, super_pac==1)
 
 # list of duplicate ID's in results:
