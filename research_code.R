@@ -292,6 +292,7 @@ dat <- dat[!(dat$gevotes==5 & dat$id=="H4RI01034"),]
 dat <- dat[!(dat$gevotes==5 & dat$id=="H0RI01073"),]
 
 dat2 <- dat %>%
+
     group_by(id,year,abbr,fips,red,totrec,totdis,candcont,indcont,dist,otherpolcom,partycont,state,open,rep,indp) %>%
     summarise(
         namer = first(namer),
@@ -315,3 +316,4 @@ results %>%
     group_by(id, year) %>%
     dplyr::summarise(num = n_distinct(namer)) %>%
     filter(num > 1)
+    )
