@@ -131,7 +131,12 @@ results <- subset(results,gevotes != "Unopposed")
 results <- subset(results, geperr != "n/a")
 results <- subset(results, rovotes == "")
 
+results$gevotes <- gsub("\\D+","",results$gevotes)
+results$gevotes <- as.numeric(results$gevotes)
 
+results$id <- trimws(results$id)
+results$namer <- gsub("#", "", results$namer)
+results$namer <- trimws(results$namer)
 
 results$distr <- gsub("\\s+","",results$distr)
 results$distr <- gsub("*","",results$distr)
@@ -287,16 +292,26 @@ dat <- dat[!(dat$gevotes==5 & dat$id=="H4RI01034"),]
 dat <- dat[!(dat$gevotes==5 & dat$id=="H0RI01073"),]
 
 dat2 <- dat %>%
-    group_by(id,year,abbr,fips,red,totrec,totdis,candcont,indcont,dist,otherpolcom,partycont,state,dvote,open,rep,indp) %>%
+    group_by(id,year,abbr,fips,red,totrec,totdis,candcont,indcont,dist,otherpolcom,partycont,state,open,rep,indp) %>%
     summarise(
         namer = first(namer),
         gevotes = sum(gevotes),
         geperr = sum(geperr),
-        incm = max(incm)
+        incm = max(incm),
+        dvote = max(dvote, rm.na = TRUE)
     )
+
 dat3 <- dat2 %>%
     group_by(id,year) %>%
     filter(n()>1)
-    
-    
+
+
 sp <- subset(ie, super_pac==1)
+
+# list of duplicate ID's in results:
+results %>%
+    filter(gevotes > 100) %>%
+    filter(!is.na(gevotes)) %>%
+    group_by(id, year) %>%
+    dplyr::summarise(num = n_distinct(namer)) %>%
+    filter(num > 1)
