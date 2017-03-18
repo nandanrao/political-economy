@@ -300,11 +300,11 @@ ie12$year <- 2012
 ie14$year <- 2014
 
 ie <- rbind(ie10,ie12,ie14)
+ie$can_id <- toupper(ie$can_id)
 
 
 
 dat2 <- dat %>%
-
     group_by(id,year,abbr,fips,red,totrec,totdis,candcont,indcont,dist,otherpolcom,partycont,state,open,rep,indp) %>%
     summarise(
         namer = first(namer),
@@ -319,6 +319,7 @@ dat3 <- dat2 %>%
     filter(n()>1)
 
 ## Merge Ideol after this step ##
+
 sp <- subset(ie, super_pac==1)
 
 # list of duplicate ID's in results:
@@ -328,4 +329,16 @@ results %>%
     group_by(id, year) %>%
     dplyr::summarise(num = n_distinct(namer)) %>%
     filter(num > 1)
-    )
+
+
+aggregated_expenditures <- ie %>%
+    mutate(agg = parse_number(agg_amo)) %>%
+    arrange(desc(rec_dat)) %>%
+    group_by(year, can_id, sup_opp, spe_id) %>%
+    dplyr::summarise(best_agg = first(agg)) %>%
+    group_by(can_id, year, sup_opp) %>%
+    dplyr::summarise(total_agg = sum(best_agg))
+
+aggregated_expenditures %>%
+    ungroup() %>%
+    summarize(tot = sum(total_agg, na.rm=TRUE))
