@@ -123,6 +123,8 @@ results <- results[!(results$dist1 %in% drops4),]
 dvote <- subset(results, totvote=="District Votes:")
 dvote <- subset(dvote, select = c("abbr","distr","gevotes","year"))
 colnames(dvote)[3] <- "dvote"
+dvote$abbr <- gsub("\\s+","",dvote$abbr)
+results$abbr <- gsub("\\s+","",results$abbr)
 results <- merge(results, dvote, by = c("abbr","distr","year"))
 
 results <- subset(results, id != "")
@@ -149,14 +151,21 @@ results <- subset(results, rovotes =="")
 
 results$geperr <- gsub("%","",results$geperr)
 
-results <- results[!(results$id==""),]
 results <- subset(results, gevotes!="#")
 
-results$rep <- ifelse(results$party %in% c("R","REP"), 1, 0)
+results$party <- gsub("\\s+","",results$party)
+results$party <-
+results$party[results$party=="REP"] <- "R"
+results$party[results$party=="R*"] <- "R"
+results$party[results$party=="GOP"] <- "R"
+results$rep <- ifelse(results$party == "R", 1, 0)
+results$party[results$party=="DEM"] <- "D"
 results$indp <- ifelse(results$party!="R",ifelse(results$party!="D", 1,0),0)
 results$party <- NULL
 results$first <- NULL
 results$last <- NULL
+results$id <- gsub("\\s+","",results$id)
+
 
 ####################################################################
 ####################################################################
@@ -190,7 +199,6 @@ cs04$runoff <- NA
 cs06$runoff <- NA
 
 cs <- rbind(cs14, cs12, cs10, cs08, cs06, cs04)
-cs$gewin[cs$gewin=="l"] <- "L"
 
 cs <- subset(cs, is.na(runoff))
 cs$runoff <- NULL
@@ -226,11 +234,12 @@ test$geperr <- ifelse(is.na(test$geperr), test$gevotes/test$dvote, test$geperr)
 drops <- c("last..first","inc","pcode","party.x","spec","gewin","geper","distr","incr","first","last","party.y","rovotes")
 test <- test[,!(names(test) %in% drops)]
 
-dat <- subset(test, complete.cases(geperr)) ## 5309 obs
+dat <- subset(test, complete.cases(gevotes)) ## 5509 obs
+dat <- subset(test, gevotes>100)
 lista <- c("AS","DC","GU","MP","VI","PR")
 dat <- dat[!(dat$abbr %in% lista),]
 
-dat$state <- gsub("\\s","",dat$state)
+dat$state <- gsub("\\s+","",dat$state)
 
 dat$namer <- gsub("\\s{2}","\\s",dat$namer)
 # dat$namer <- gsub("^(\\S+\\s\\S+)\\s.*$","\\1",dat$namer)
