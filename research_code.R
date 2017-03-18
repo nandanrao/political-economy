@@ -317,10 +317,15 @@ results %>%
     dplyr::summarise(num = n_distinct(namer)) %>%
     filter(num > 1)
 
-ie %>%
-    mutate(exp = parse_number(exp_amo)) %>%
+
+aggregated_expenditures <- ie %>%
+    mutate(agg = parse_number(agg_amo)) %>%
     arrange(desc(rec_dat)) %>%
-    group_by(can_id, year, sup_opp, tra_id) %>%
-    dplyr::summarise(exp = first(exp)) %>%
+    group_by(year, can_id, sup_opp, spe_id) %>%
+    dplyr::summarise(best_agg = first(agg)) %>%
     group_by(can_id, year, sup_opp) %>%
-    dplyr::summarise(total_expenditures = sum(exp))
+    dplyr::summarise(total_agg = sum(best_agg))
+
+aggregated_expenditures %>%
+    ungroup() %>%
+    summarize(tot = sum(total_agg, na.rm=TRUE))
