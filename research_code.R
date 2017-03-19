@@ -1,4 +1,10 @@
 require(XLConnect)
+require(plyr)
+require(dplyr)
+require(data.table)
+require(zoo)
+library(readr)
+library(reshape2)
 
 ####################################################################
 ####################################################################
@@ -291,7 +297,18 @@ dat2 <- dat %>%
     group_by(id,year) %>%
     filter(n()>1)
 
-library(readr)
+dat2 <- dat %>%
+  group_by(year,abbr,dist,state,dvote) %>%
+  filter(n()>1) %>%
+  arrange(desc(geperr)) %>%
+  summarise(lastper = max(geperr)-geperr[2])
+
+dat2$year <- dat2$year +2
+dat2 <- dat2[!(dat2$year==2016),]
+dat2$dvote <-NULL
+
+dat <- merge(dat,dat2,by=c("year","abbr","dist","state"),all.x = TRUE)
+
 
 aggregated_expenditures <- ie %>%
     mutate(agg = parse_number(agg_amo)) %>%
@@ -309,7 +326,7 @@ aggregated_expenditures$can_id <- gsub("\\s+","",aggregated_expenditures$can_id)
 aggregated_expenditures <- subset(aggregated_expenditures, can_id!="")
 aggregated_expenditures$sup_opp <- gsub(" ",NA, aggregated_expenditures$sup_opp)
 
-library(reshape2)
+
 aggexp <- dcast(aggregated_expenditures, can_id+year ~ sup_opp, value.var = "total_agg")
 aggexp$`NA` <-NULL
 colnames(aggexp) <- c("id","year","iesup","ieopp")
@@ -320,10 +337,6 @@ colnames(aggexp) <- c("id","year","iesup","ieopp")
 ####################################################################
 ####################################################################
 
-require(plyr)
-require(dplyr)
-require(data.table)
-require(zoo)
 
 ideol <- read.csv("ideol.csv")
 ideolr <-read.csv("ideol redistrict.csv")
@@ -341,10 +354,191 @@ dat$red <- ifelse(dat$year==2014,1,0)
 
 dat <- merge(dat,ideol, by=c("abbr","fips","red"))
 
+
 dat1 <- merge(dat,aggexp,all.x = TRUE)
 
 ## Fully merged all data, 4953 observations ##
+## Create log columns ##
+dat1$ltotrec <- log(dat1$totrec + 1)
+dat1$ltotdis <- log(dat1$totdis + 1)
+dat1$lcandcont <- log(dat1$candcont + 1)
+dat1$lindcont <- log(dat1$indcont + 1)
+dat1$lpac <- log(dat1$otherpolcom + 1)
+dat1$lpartycont <- log(dat1$partycont + 1)
+
+dat1$ieopp <- ifelse(is.na(dat1$ieopp),0,dat1$ieopp)
+dat1$iesup <- ifelse(is.na(dat1$iesup),0,dat1$iesup)
+dat1$liesup <- log(dat1$iesup + 1)
+dat1$lieopp <- log(dat1$ieopp + 1)
+
+dat1$ldiff <- dat1$liesup-dat1$lieopp
+
+comp <- read.csv("comp.csv")
+comp <- comp[unique(comp$District),1]
 
 
+####################################################################
+####################################################################
+##################         Regressions         #####################
+####################################################################
+####################################################################
+
+
+### NOTE ###
+
+# All of these regressions have the same endogeneity problem, the independent expenditures are
+# correlated with close races. Basically this finds that they amount to reactionary spending 
+# for stiff competitition, and so the sign comes out negative or is insignificant.
+
+############
+
+
+
+
+
+################
+## Pooled OLS ##
+################
+
+
+# Spending not separated, no fixed effects, 
+
+pooled <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year))
+pooledabs <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+abs(ideol)+as.factor(year))
+
+# Spending separated, no fixed effects, 
+
+pooled2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year))
+
+# Spending separated, ie ratio, no fixed effects, 
+
+pooled3 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+ldiff+rep+indp+open+incm+ideol+as.factor(year))
+
+
+###################
+## Pooled OLS FE ##
+###################
+
+
+# Spending not separated, fixed effects, 
+
+pooledfe <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+# Spending separated, fixed effects, 
+
+pooledfe2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+# Spending separated, ie ratio, no fixed effects, 
+
+pooledfe3 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+ldiff+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+
+########################
+## Restricted Samples ##
+########################
+
+
+    # Unrestricted samples may not be valid since multiple candidates
+    # in the same race will have correlated errors
+
+# Spending not separated, no fixed effects, , One party only
+
+datr <- subset(dat1, rep==1)
+datd <- subset(dat1, rep==0)
+
+repres <- lm(data=datr,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year))
+
+demres <- lm(data=datd,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year))
+
+# Spending separated, no fixed effects, , One party only
+
+repres2 <- lm(data=datr,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year))
+
+demres2 <- lm(data=datd,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year))
+
+# Spending not separated, fixed effects, , Open seats only
+
+datopen <- subset(dat1,open==1)
+
+openres <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+rep+indp+ideol+as.factor(year))
+
+# Spending separated, no fixed effects, , Open seats only
+
+openres2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+ideol+as.factor(year))
+
+
+###########################
+## Restricted Samples FE ##
+###########################
+
+
+# Spending not separated, fixed effects, , One party only
+
+represfe <- lm(data=datr,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+demresfe <- lm(data=datd,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+# Spending separated, fixed effects, , One party only
+
+represfe2 <- lm(data=datr,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+demresfe2 <- lm(data=datd,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+# Spending not separated, fixed effects, , Open seats only
+
+openresfe <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+rep+indp+ideol+as.factor(year)+as.factor(fips))
+
+# Spending separated, fixed effects, , Open seats only
+
+openresfe2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+ideol+as.factor(year)+as.factor(fips))
+
+
+
+### NOTE ###
+
+# I created the var "lastper" as the spread of the last election in that district to try
+# and correct for competitive race spending. Regression then only includes 2006-2014 years.
+
+### SPOILER ALERT ###
+
+# It does nothing...
+
+## Pooled OLS, Spread control ##
+
+# Spending not separated, fixed effects, 
+
+pooledcfe <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+lastper+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+# Spending separated, fixed effects, 
+
+pooledcfe2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+
+## Restricted Samples, Spread control ##
+
+
+# Spending not separated, fixed effects, , One party only
+
+represcfe <- lm(data=datr,geperr~ltotdis+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+demrescfe <- lm(data=datd,geperr~ltotdis+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+# Spending separated, fixed effects, , One party only
+
+represcfe2 <- lm(data=datr,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+demrescfe2 <- lm(data=datd,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
+
+# Spending not separated, fixed effects, , Open seats only
+
+openrescfe <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
+
+# Spending separated, fixed effects, , Open seats only
+
+openrescfe2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
+
+# Spending not separated, fixed effects, interaction with IE and lastper, Open seats only
+
+openresife <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+lastper+liesup*lastper+lieopp*lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
 
 
