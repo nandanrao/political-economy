@@ -309,6 +309,14 @@ dat2$dvote <-NULL
 
 dat <- merge(dat,dat2,by=c("year","abbr","dist","state"),all.x = TRUE)
 
+dat4 <- dat %>%
+  group_by(year,abbr,dist,state) %>%
+  filter(n()>1) %>%
+  summarise(pactot = sum(otherpolcom,na.rm=TRUE),
+            indtot = sum(indcont,na.rm=TRUE),
+            spendtot = sum(totdis,na.rm=TRUE))
+
+dat<-merge(dat,dat4,by=c("year","abbr","dist","state"),all.x = TRUE)
 
 aggregated_expenditures <- ie %>%
     mutate(agg = parse_number(agg_amo)) %>%
@@ -355,7 +363,7 @@ dat$red <- ifelse(dat$year==2014,1,0)
 dat <- merge(dat,ideol, by=c("abbr","fips","red"))
 
 
-dat1 <- merge(dat,aggexp,all.x = TRUE)
+dat1 <- merge(dat,aggexp, by=c("id","year"),all.x = TRUE)
 
 ## Fully merged all data, 4953 observations ##
 ## Create log columns ##
@@ -371,10 +379,11 @@ dat1$iesup <- ifelse(is.na(dat1$iesup),0,dat1$iesup)
 dat1$liesup <- log(dat1$iesup + 1)
 dat1$lieopp <- log(dat1$ieopp + 1)
 
-dat1$ldiff <- dat1$liesup-dat1$lieopp
+dat1$loppac <- log(dat1$pactot+1)-dat1$lpac
+dat1$loppind <- log(dat1$indtot+1)-dat1$lindcont
+dat1$loppspend <- log(dat1$spendtot+1)-dat1$ltotdis
 
-comp <- read.csv("comp.csv")
-comp <- comp[unique(comp$District),1]
+
 
 
 ####################################################################
@@ -422,11 +431,11 @@ pooled3 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+ldiff+rep+indp+open+incm
 
 # Spending not separated, fixed effects, 
 
-pooledfe <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+pooledfe <- lm(data=dat1,geperr~ltotdis+loppspend+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
 
 # Spending separated, fixed effects, 
 
-pooledfe2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+pooledfe2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+loppind+loppac+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
 
 # Spending separated, ie ratio, no fixed effects, 
 
@@ -539,6 +548,39 @@ openrescfe2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+liesup+lieopp+las
 
 # Spending not separated, fixed effects, interaction with IE and lastper, Open seats only
 
-openresife <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+lastper+liesup*lastper+lieopp*lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
+openresife <- lm(data=datopen,geperr~ltotdis+liesup+lastper+ltotdis*lastper+liesup*lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
+
+openresife2 <- lm(data=datopen,geperr~lindcont+lpartycont+lcandcont+lpac+liesup+lastper+ltotdis*lastper+liesup*lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
+summary(openresife2)
 
 
+
+comp12 <- read.csv("comp12.csv")
+comp14 <- read.csv("comp14.csv")
+
+comp12 <- subset(comp12, Cook=="Tossup" | Real.Clear.Politics=="Tossup")
+comp14 <- subset(comp14, Cook=="Tossup" | Real.Clear.Politics=="Tossup")
+comp <- rbind(comp12,comp14)
+comp$District <- gsub("\\s+","",comp$District)
+comp <- comp[!(duplicated(comp$District)),]
+comp$dist <- gsub("\\D+","",comp$District)
+comp$state <- gsub("\\d+","",comp$District)
+comp$District <-NULL
+comp$comp <- 1
+comp$Cook<-NULL
+comp$Real.Clear.Politics<-NULL
+comp$dist<-as.numeric(comp$dist)
+
+dat1 <- merge(dat1,comp,by= c("state","dist"),all.x = TRUE)
+dat1$comp <- ifelse(is.na(dat1$comp),0,1)
+comp <-subset(dat1,comp==1)
+
+cor(comp$geperr,comp$ieopp)
+cor(comp$iesup,comp$ieopp)
+cor(dat1$iesup,dat1$ieopp)
+
+
+compresife <- lm(data=comp,geperr~ltotdis+liesup+lastper+lieopp*lastper+liesup*lastper+incm+rep+indp+ideol+as.factor(year)+as.factor(fips))
+
+compresife2 <- lm(data=comp,geperr~lindcont+lpartycont+lcandcont+lpac+liesup+lastper+lieopp*lastper+liesup*lastper+incm+rep+indp+ideol+as.factor(year)+as.factor(fips))
+summary(compresife)
