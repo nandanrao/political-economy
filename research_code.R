@@ -383,6 +383,7 @@ dat1$loppac <- log(dat1$pactot+1)-dat1$lpac
 dat1$loppind <- log(dat1$indtot+1)-dat1$lindcont
 dat1$loppspend <- log(dat1$spendtot+1)-dat1$ltotdis
 
+dat1$ideol <- (dat1$ideol+1.0863)/2
 
 
 
@@ -409,149 +410,49 @@ dat1$loppspend <- log(dat1$spendtot+1)-dat1$ltotdis
 ## Pooled OLS ##
 ################
 
-
-# Spending not separated, no fixed effects, 
+require(stargazer)
+# Spending not separated 
 
 pooled <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year))
-pooledabs <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+abs(ideol)+as.factor(year))
+pooledfe <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
 
-# Spending separated, no fixed effects, 
+stargazer(pooled, pooledfe, title="Pooled OLS",
+          align=TRUE, dep.var.labels=c("General Election Percent"),
+          covariate.labels=c("Total Spending","Supporting IE",
+                             "Opposing IE","Republican","Independent",
+                             "Open Seat", "Incumbent", "Ideological Distance", 
+                             "Incumbent", "Opp. Incumbent", "Republican", "Ideological Distance"), 
+          omit = c("year","fips"), omit.labels = c("Time Trend","District Dummies"), no.space=TRUE)
 
-pooled2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year))
-
-# Spending separated, ie ratio, no fixed effects, 
-
-pooled3 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+ldiff+rep+indp+open+incm+ideol+as.factor(year))
-
-
-###################
-## Pooled OLS FE ##
-###################
-
-
-# Spending not separated, fixed effects, 
-
-pooledfe <- lm(data=dat1,geperr~ltotdis+loppspend+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-# Spending separated, fixed effects, 
-
+# Spending separated 
+pooled2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+loppind+loppac+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year))
 pooledfe2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+loppind+loppac+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
 
-# Spending separated, ie ratio, no fixed effects, 
-
-pooledfe3 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+ldiff+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-
-########################
-## Restricted Samples ##
-########################
-
-
-    # Unrestricted samples may not be valid since multiple candidates
-    # in the same race will have correlated errors
-
-# Spending not separated, no fixed effects, , One party only
-
-datr <- subset(dat1, rep==1)
-datd <- subset(dat1, rep==0)
-
-repres <- lm(data=datr,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year))
-
-demres <- lm(data=datd,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year))
-
-# Spending separated, no fixed effects, , One party only
-
-repres2 <- lm(data=datr,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year))
-
-demres2 <- lm(data=datd,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year))
-
-# Spending not separated, fixed effects, , Open seats only
-
-datopen <- subset(dat1,open==1)
-
-openres <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+rep+indp+ideol+as.factor(year))
-
-# Spending separated, no fixed effects, , Open seats only
-
-openres2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+ideol+as.factor(year))
-
-
+stargazer(pooled2, pooledfe2, title="Pooled OLS, Separated Spending",
+          align=TRUE, dep.var.labels=c("General Election Percent"),
+          covariate.labels=c("Indiv. Cont.","Pac Cont.","Party Cont.","Opp. Ind. Cont.","Opp. PAC","Supporting IE",
+                             "Opposing IE","Republican","Independent",
+                             "Open Seat", "Incumbent", "Ideological Distance", 
+                             "Incumbent", "Opp. Incumbent", "Republican", "Ideological Distance"), 
+          omit = c("year","fips"), omit.labels = c("Time Trend","District Dummies"), no.space=TRUE)
 ###########################
 ## Restricted Samples FE ##
 ###########################
 
-
-# Spending not separated, fixed effects, , One party only
-
-represfe <- lm(data=datr,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-demresfe <- lm(data=datd,geperr~ltotdis+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-# Spending separated, fixed effects, , One party only
-
-represfe2 <- lm(data=datr,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-demresfe2 <- lm(data=datd,geperr~lindcont+lpac+lpartycont+liesup+lieopp+open+incm+ideol+as.factor(year)+as.factor(fips))
+datopen <- subset(dat1,open==1)
 
 # Spending not separated, fixed effects, , Open seats only
 
 openresfe <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+rep+indp+ideol+as.factor(year)+as.factor(fips))
+openresfe2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+loppind+liesup+lieopp+rep+indp+ideol+as.factor(year)+as.factor(fips))
 
-# Spending separated, fixed effects, , Open seats only
+stargazer(openresfe, openresfe2, title="Open Seat Elections",
+          align=TRUE, dep.var.labels=c("General Election Percent"),
+          covariate.labels=c("Total Spending","Indiv. Cont.","Pac Cont.","Party Cont.","Opp. Ind. Cont.","Opp. PAC","Supporting IE",
+                             "Opposing IE","Republican","Independent", "Ideological Distance", 
+                             "Incumbent", "Opp. Incumbent", "Republican", "Ideological Distance"), 
+          omit = c("year","fips"), omit.labels = c("Time Trend","District Dummies"), no.space=TRUE)
 
-openresfe2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+liesup+lieopp+rep+indp+ideol+as.factor(year)+as.factor(fips))
-
-
-
-### NOTE ###
-
-# I created the var "lastper" as the spread of the last election in that district to try
-# and correct for competitive race spending. Regression then only includes 2006-2014 years.
-
-### SPOILER ALERT ###
-
-# It does nothing...
-
-## Pooled OLS, Spread control ##
-
-# Spending not separated, fixed effects, 
-
-pooledcfe <- lm(data=dat1,geperr~ltotdis+liesup+lieopp+lastper+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-# Spending separated, fixed effects, 
-
-pooledcfe2 <- lm(data=dat1,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-
-## Restricted Samples, Spread control ##
-
-
-# Spending not separated, fixed effects, , One party only
-
-represcfe <- lm(data=datr,geperr~ltotdis+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-demrescfe <- lm(data=datd,geperr~ltotdis+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-# Spending separated, fixed effects, , One party only
-
-represcfe2 <- lm(data=datr,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-demrescfe2 <- lm(data=datd,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+open+incm+ideol+as.factor(year)+as.factor(fips))
-
-# Spending not separated, fixed effects, , Open seats only
-
-openrescfe <- lm(data=datopen,geperr~ltotdis+liesup+lieopp+lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
-
-# Spending separated, fixed effects, , Open seats only
-
-openrescfe2 <- lm(data=datopen,geperr~lindcont+lpac+lpartycont+liesup+lieopp+lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
-
-# Spending not separated, fixed effects, interaction with IE and lastper, Open seats only
-
-openresife <- lm(data=datopen,geperr~ltotdis+liesup+lastper+ltotdis*lastper+liesup*lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
-
-openresife2 <- lm(data=datopen,geperr~lindcont+lpartycont+lcandcont+lpac+liesup+lastper+ltotdis*lastper+liesup*lastper+rep+indp+ideol+as.factor(year)+as.factor(fips))
-summary(openresife2)
 
 
 
@@ -575,12 +476,13 @@ dat1 <- merge(dat1,comp,by= c("state","dist"),all.x = TRUE)
 dat1$comp <- ifelse(is.na(dat1$comp),0,1)
 comp <-subset(dat1,comp==1)
 
-cor(comp$geperr,comp$ieopp)
-cor(comp$iesup,comp$ieopp)
-cor(dat1$iesup,dat1$ieopp)
 
+comprescfe <- lm(data=comp,geperr~ltotdis+liesup+lieopp+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
+comprescfe2 <- lm(data=comp,geperr~lindcont+lpac+lpartycont+loppind+loppac+liesup+lieopp+incm+rep+indp+open+incm+ideol+as.factor(year)+as.factor(fips))
 
-compresife <- lm(data=comp,geperr~ltotdis+liesup+lastper+lieopp*lastper+liesup*lastper+incm+rep+indp+ideol+as.factor(year)+as.factor(fips))
-
-compresife2 <- lm(data=comp,geperr~lindcont+lpartycont+lcandcont+lpac+liesup+lastper+lieopp*lastper+liesup*lastper+incm+rep+indp+ideol+as.factor(year)+as.factor(fips))
-summary(compresife)
+stargazer(comprescfe, comprescfe2, title="Competitive Districts",
+          align=TRUE, dep.var.labels=c("General Election Percent"),
+          covariate.labels=c("Total Spending","Indiv. Cont.","Pac Cont.","Party Cont.","Opp. Ind. Cont.","Opp. PAC","Supporting IE",
+                             "Opposing IE","Republican","Independent","Open",
+                             "Incumbent","Ideological Distance"), 
+          omit = c("year","fips"), omit.labels = c("Time Trend","District Dummies"), no.space=TRUE)
